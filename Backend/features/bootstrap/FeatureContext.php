@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 use Behat\Behat\Context\Context;
 use Fulll\App\Calculator;
+use Fulll\App\ParkVehicleHandler;
 use Fulll\Domain\Fleet;
+use Fulll\Domain\Location;
 use Fulll\Domain\Vehicle;
 use Fulll\App\RegisterVehicleHandler;
+use Fulll\Domain\Exception\VehicleAlreadyParkedAtLocationException;
 use Fulll\Domain\Exception\VehicleAlreadyRegisteredInFleetException;
 use Fulll\Infra\InMemoryFleetRepository;
 
@@ -15,6 +18,7 @@ class FeatureContext implements Context
     private ?Fleet $myFleet = null;
     private ?Fleet $otherFleet = null;
     private ?Vehicle $vehicle = null;
+    private ?Location $location = null;
     private ?string $exceptionMessage = null;
     private InMemoryFleetRepository $fleetRepository;
 
@@ -108,5 +112,66 @@ class FeatureContext implements Context
     {
         $handler = new RegisterVehicleHandler($this->fleetRepository);
         $handler->execute($this->otherFleet->getId(), $this->vehicle->getPlateNumber());
+    }
+
+    /**
+     * @Given a location
+     */
+    public function aLocation(): void
+    {
+        $this->location = new Location(48.8566, 2.3522);
+    }
+
+    /**
+     * @When I park my vehicle at this location
+     */
+    public function iParkMyVehicleAtThisLocation(): void
+    {
+        $handler = new ParkVehicleHandler($this->fleetRepository);
+        $handler->execute($this->myFleet->getId(), $this->vehicle->getPlateNumber(), $this->location);
+    }
+
+    /**
+     * @Given my vehicle has been parked into this location
+     */
+    public function myVehicleHasBeenParkedIntoThisLocation(): void
+    {
+        $handler = new ParkVehicleHandler($this->fleetRepository);
+        $handler->execute($this->myFleet->getId(), $this->vehicle->getPlateNumber(), $this->location);
+    }
+
+    /**
+     * @When i try to park my vehicle at this location
+     */
+    public function iTryToParkMyVehicleAtThisLocation(): void
+    {
+        try {
+            $handler = new ParkVehicleHandler($this->fleetRepository);
+            $handler->execute($this->myFleet->getId(), $this->vehicle->getPlateNumber(), $this->location);
+        } catch (VehicleAlreadyParkedAtLocationException $e) {
+            $this->exceptionMessage = $e->getMessage();
+        }
+    }
+
+    /**
+     * @Then the known location of my vehicle should verify this location
+     */
+    public function theKnownLocationOfMyVehicleShouldVerifyThisLocation(): void
+    {
+        $fleet = $this->fleetRepository->getById($this->myFleet->getId());
+        $vehicleLocation = $fleet->getVehicleLocation($this->vehicle->getPlateNumber());
+        if (!$vehicleLocation || !$vehicleLocation->equals($this->location)) {
+            throw new \RuntimeException('Vehicle is not parked at the expected location');
+        }
+    }
+
+    /**
+     * @Then I should be informed that my vehicle is already parked at this location
+     */
+    public function iShouldBeInformedThatMyVehicleIsAlreadyParkedAtThisLocation(): void
+    {
+        if (!$this->exceptionMessage) {
+            throw new \RuntimeException('Expected exception was not thrown');
+        }
     }
 }
