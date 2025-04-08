@@ -1,0 +1,82 @@
+#!/usr/bin/env php
+<?php
+
+require_once __DIR__ . '/vendor/autoload.php';
+
+use Fulll\App\CreateFleetHandler;
+use Fulll\App\RegisterVehicleHandler;
+use Fulll\App\ParkVehicleHandler;
+use Fulll\Domain\Vehicle;
+use Fulll\Domain\Location;
+use Fulll\Infra\FileSystemFleetRepository;
+
+$fleetRepository = new FileSystemFleetRepository(__DIR__ . '/data/fleets');
+
+if ($argc < 2) {
+    echo "Usage: ./fleet <command> [arguments...]\n";
+    echo "Available commands:\n";
+    echo "  create <userId>                                - Create a new fleet for a user\n";
+    echo "  register-vehicle <fleetId> <vehiclePlateNumber> - Register a vehicle in a fleet\n";
+    echo "  localize-vehicle <fleetId> <vehiclePlateNumber> <lat> <lng> [alt] - Localize a vehicle\n";
+    exit(1);
+}
+
+$command = $argv[1];
+
+try {
+    switch ($command) {
+        case 'create':
+            if ($argc < 3) {
+                echo "Usage: ./fleet create <userId>\n";
+                exit(1);
+            }
+            $userId = $argv[2];
+            $handler = new CreateFleetHandler($fleetRepository);
+            $fleetId = $handler->execute($userId);
+            echo $fleetId . "\n";
+            break;
+
+        case 'register-vehicle':
+            if ($argc < 4) {
+                echo "Usage: ./fleet register-vehicle <fleetId> <vehiclePlateNumber>\n";
+                exit(1);
+            }
+            $fleetId = $argv[2];
+            $plateNumber = $argv[3];
+
+            $handler = new RegisterVehicleHandler($fleetRepository);
+            $handler->execute($fleetId, $plateNumber);
+            echo "Vehicle {$plateNumber} registered successfully in fleet {$fleetId}\n";
+            break;
+
+        case 'localize-vehicle':
+            if ($argc < 6) {
+                echo "Usage: ./fleet localize-vehicle <fleetId> <vehiclePlateNumber> <lat> <lng> [alt]\n";
+                exit(1);
+            }
+            $fleetId = $argv[2];
+            $plateNumber = $argv[3];
+            $lat = (float) $argv[4];
+            $lng = (float) $argv[5];
+            $alt = isset($argv[6]) ? (float) $argv[6] : null;
+
+            $location = new Location($lat, $lng);
+
+            $handler = new ParkVehicleHandler($fleetRepository);
+            $handler->execute($fleetId, $plateNumber, $location);
+            echo "Vehicle {$plateNumber} located successfully at ({$lat}, {$lng}";
+            if ($alt !== null) {
+                echo ", {$alt}";
+            }
+            echo ") in fleet {$fleetId}\n";
+            break;
+
+        default:
+            echo "Unknown command: {$command}\n";
+            echo "Available commands: create, register-vehicle, localize-vehicle\n";
+            exit(1);
+    }
+} catch (\Exception $e) {
+    echo "Error: " . $e->getMessage() . "\n";
+    exit(1);
+}

@@ -139,6 +139,43 @@ Avantages du BDD :
 
 ---
 
-## Conclusion
+## Application CLI
 
-Ce système de gestion de flotte démontre l'application de principes de conception modernes et robustes pour créer une application évolutive et maintenable. L'architecture en couches et l'approche **DDD** permettent une séparation claire des préoccupations, facilitant l'ajout de nouvelles fonctionnalités et l'évolution du système dans le temps.
+Le projet inclut une interface en ligne de commande (CLI) pour interagir avec le système de gestion de flotte.
+
+### Commandes disponibles
+
+#### Créer une flotte
+```bash
+./fleet create <userId>
+```
+
+Cette commande crée une nouvelle flotte pour l'utilisateur spécifié et retourne l'ID de la flotte dans la sortie standard.
+
+#### Enregistrer un véhicule dans une flotte
+```bash
+./fleet register-vehicle <fleetId> <vehiclePlateNumber>
+```
+
+Cette commande enregistre un véhicule avec le numéro d'immatriculation spécifié dans la flotte correspondante.
+
+#### Localiser un véhicule
+```bash
+./fleet localize-vehicle <fleetId> <vehiclePlateNumber> <lat> <lng>
+```
+
+Cette commande enregistre la position actuelle d'un véhicule avec ses coordonnées GPS.
+
+### Persistance des données
+
+Les données sont stockées dans le répertoire ```/data/fleets/``` du projet. Pour cette implémentation, nous utilisons une persistance basée sur le système de fichiers ```FileSystemFleetRepository``` qui sérialise les objets Fleet et les enregistre dans des fichiers individuels.
+
+Chaque flotte est sauvegardée dans un fichier séparé nommé d'après son ID.
+
+#### Exécution de l'application
+
+Pour utiliser l'application CLI, assurez-vous que le fichier fleet est exécutable :
+
+```bash
+chmod +x ./fleet
+```
